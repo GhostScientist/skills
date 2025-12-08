@@ -1,16 +1,21 @@
 {
   "name": "ghostscientist-skills",
-  "owner": "GhostScientist",
-  "metadata": {
-    "version": "1.0.0",
-    "description": "Custom skills for Claude Code by GhostScientist"
+  "owner": {
+    "name": "GhostScientist"
   },
-  "plugins": {
-    "writing-skills": {
+  "metadata": {
+    "description": "Custom skills for Claude Code by GhostScientist",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "writing-skills",
       "description": "Skills for technical writing and content creation",
-      "strict": false,
       "source": "./",
-      "skills": ["turn-this-feature-into-a-blog-post"]
+      "strict": false,
+      "skills": [
+        "./skills/turn-this-feature-into-a-blog-post"
+      ]
     }
-  }
+  ]
 }
