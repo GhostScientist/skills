@@ -16,6 +16,15 @@
       "skills": [
         "./skills/turn-this-feature-into-a-blog-post"
       ]
+    },
+    {
+      "name": "design-skills",
+      "description": "Skills for visual design and creative asset generation",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/ios-app-icon-generator"
+      ]
     }
   ]
 }

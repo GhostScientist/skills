@@ -26,6 +26,14 @@ Skills for technical writing and content creation.
 |-------|-------------|
 | `turn-this-feature-into-a-blog-post` | Generates a technical blog post from code implementation. Structures content as What → Why → How with a friendly, authoritative style. |
 
+### design-skills
+
+Skills for visual design and creative asset generation.
+
+| Skill | Description |
+|-------|-------------|
+| `ios-app-icon-generator` | Creates a complete iOS app icon set with all required sizes. Follows a philosophy-first approach, then generates a self-contained HTML artifact with downloadable PNGs. |
+
 ## Creating Your Own Skills
 
 Use the `template/SKILL.md` as a starting point. Each skill needs:
