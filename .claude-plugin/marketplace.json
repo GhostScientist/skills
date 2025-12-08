@@ -25,6 +25,20 @@
       "skills": [
         "./skills/ios-app-icon-generator"
       ]
+    },
+    {
+      "name": "research-skills",
+      "description": "Skills for AI/ML research: understanding papers, designing experiments, refining research questions, and developing research taste",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/paper-to-intuition",
+        "./skills/implement-paper-from-scratch",
+        "./skills/research-question-refiner",
+        "./skills/experiment-design-checklist",
+        "./skills/reviewer-2-simulator",
+        "./skills/research-taste-developer"
+      ]
     }
   ]
 }
