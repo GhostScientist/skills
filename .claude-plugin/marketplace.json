@@ -1,0 +1,16 @@
+{
+  "name": "ghostscientist-skills",
+  "owner": "GhostScientist",
+  "metadata": {
+    "version": "1.0.0",
+    "description": "Custom skills for Claude Code by GhostScientist"
+  },
+  "plugins": {
+    "writing-skills": {
+      "description": "Skills for technical writing and content creation",
+      "strict": false,
+      "source": "./",
+      "skills": ["turn-this-feature-into-a-blog-post"]
+    }
+  }
+}
