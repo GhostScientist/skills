@@ -23,7 +23,8 @@
       "source": "./",
       "strict": false,
       "skills": [
-        "./skills/ios-app-icon-generator"
+        "./skills/ios-app-icon-generator",
+        "./skills/create-watchos-version"
       ]
     },
     {
