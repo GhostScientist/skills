@@ -7,95 +7,160 @@ description: Create, configure, and deploy Hugging Face Spaces for showcasing ML
 
 A skill for AI engineers to create, configure, and deploy interactive ML demos on Hugging Face Spaces.
 
-## Overview
+## CRITICAL: Pre-Deployment Checklist
 
-Hugging Face Spaces provide free hosting for ML demos. This skill helps you:
-- Create new Spaces with proper configuration
-- Choose the right SDK (Gradio, Streamlit, Docker)
-- Select appropriate hardware (CPU, GPU tiers)
-- Deploy models with professional UIs
-- Manage secrets and environment variables
+**Before writing ANY code, gather this information about the model:**
 
-## Dependencies
+### 1. Check Model Type (LoRA Adapter vs Full Model)
 
+**Use the HF MCP tool to inspect the model files:**
 ```
-huggingface_hub>=0.26.0
-gradio>=4.0.0
+hf-skills - Hub Repo Details (repo_ids: ["username/model"], repo_type: "model")
 ```
 
-## Core Capabilities
+**Look for these indicators:**
 
-### 1. Space Creation & Configuration
-- Initialize Spaces with correct SDK and hardware
-- Configure `README.md` metadata (YAML frontmatter)
-- Set up secrets and environment variables
-- Manage visibility (public/private)
+| Files Present | Model Type | Action Required |
+|---------------|------------|-----------------|
+| `model.safetensors` or `pytorch_model.bin` | Full model | Load directly with `AutoModelForCausalLM` |
+| `adapter_model.safetensors` + `adapter_config.json` | LoRA/PEFT adapter | Must load base model first, then apply adapter with `peft` |
+| Only config files, no weights | Broken/incomplete | Ask user to verify |
 
-### 2. SDK Support
-- **Gradio**: Best for ML demos, auto-generates UI from functions
-- **Streamlit**: Best for data apps and dashboards
-- **Docker**: Full control, any framework
+**If adapter_config.json exists, check for `base_model_name_or_path` to identify the base model.**
 
-### 3. Hardware Options
+### 2. Check Inference API Availability
+
+Visit the model page on HF Hub and look for "Inference Providers" widget on the right side.
+
+**Indicators that model HAS Inference API:**
+- Inference widget visible on model page
+- Model from known provider: `meta-llama`, `mistralai`, `HuggingFaceH4`, `google`, `stabilityai`, `Qwen`
+- High download count (>10,000) with standard architecture
+
+**Indicators that model DOES NOT have Inference API:**
+- Personal namespace (e.g., `GhostScientist/my-model`)
+- LoRA/PEFT adapter (adapters never have direct Inference API)
+- Missing `pipeline_tag` in model metadata
+- No inference widget on model page
+
+### 3. Check Model Metadata
+
+- Ensure `pipeline_tag` is set (e.g., `text-generation`)
+- Add `conversational` tag for chat models
+
+### 4. Determine Hardware Needs
+
+| Model Size | Recommended Hardware |
+|------------|---------------------|
+| < 3B parameters | ZeroGPU (free) or CPU |
+| 3B - 7B parameters | ZeroGPU or T4 |
+| > 7B parameters | A10G or A100 |
+
+### 5. Ask User If Unclear
+
+**If you cannot determine the model type, ASK THE USER:**
+
+> "I'm analyzing your model to determine the best deployment strategy. I found:
+> - [what you found about files]
+> - [what you found about inference API]
+>
+> Is this model:
+> 1. A full model you trained/uploaded?
+> 2. A LoRA/PEFT adapter on top of another model?
+> 3. Something else?
+>
+> Also, would you prefer:
+> A. Free deployment with ZeroGPU (may have queue times)
+> B. Paid GPU for faster response (~$0.60/hr)"
+
+## Hardware Options
+
 | Hardware | Use Case | Cost |
 |----------|----------|------|
-| `cpu-basic` | Simple demos, text models | Free |
+| `cpu-basic` | Simple demos, Inference API apps | Free |
 | `cpu-upgrade` | Faster CPU inference | ~$0.03/hr |
+| **`zero-a10g`** | **Models needing GPU on-demand (recommended for most)** | **Free (with quota)** |
 | `t4-small` | Small GPU models (<7B) | ~$0.60/hr |
 | `t4-medium` | Medium GPU models | ~$0.90/hr |
 | `a10g-small` | Large models (7B-13B) | ~$1.50/hr |
 | `a10g-large` | Very large models (30B+) | ~$3.15/hr |
 | `a100-large` | Largest models | ~$4.50/hr |
 
-## Space README.md Format
+**ZeroGPU Note:** ZeroGPU (`zero-a10g`) provides free GPU access on-demand. The Space runs on CPU, and when a user triggers inference, a GPU is allocated temporarily (~60-120 seconds). **After deployment, you must manually set the runtime to "ZeroGPU" in Space Settings > Hardware.**
 
-Every Space requires a `README.md` with YAML frontmatter:
+## Deployment Decision Tree
 
-```yaml
----
-title: My Awesome Demo
-emoji: 🚀
-colorFrom: blue
-colorTo: purple
-sdk: gradio
-sdk_version: 4.44.0
-app_file: app.py
-pinned: false
-license: mit
-short_description: A demo of my cool model
----
-
-# My Awesome Demo
-
-Description of what this Space does...
+```
+Analyze Model
+│
+├── Does it have adapter_config.json?
+│   └── YES → It's a LoRA adapter
+│       ├── Find base_model_name_or_path in adapter_config.json
+│       └── Use Template 3 (LoRA + ZeroGPU)
+│
+├── Does it have model.safetensors or pytorch_model.bin?
+│   └── YES → It's a full model
+│       ├── Is it from a major provider with inference widget?
+│       │   ├── YES → Use Inference API (Template 1)
+│       │   └── NO → Use ZeroGPU (Template 2)
+│
+└── Neither found?
+    └── ASK USER - model may be incomplete
 ```
 
-### Required Fields
-- `title`: Display name for the Space
-- `emoji`: Single emoji for the Space card
-- `colorFrom`, `colorTo`: Gradient colors (red, yellow, green, blue, indigo, purple, pink, gray)
-- `sdk`: One of `gradio`, `streamlit`, `docker`, `static`
-- `app_file`: Entry point (default: `app.py`)
+## Dependencies
 
-### Optional Fields
-- `sdk_version`: Pin specific SDK version
-- `pinned`: Pin to profile (true/false)
-- `license`: SPDX license identifier
-- `short_description`: Brief tagline (max 60 chars)
-- `suggested_hardware`: Default hardware tier
-- `suggested_storage`: Persistent storage tier
-- `hf_oauth`: Enable HF OAuth (true/false)
-- `disable_embedding`: Prevent iframe embedding
+**For Inference API (cpu-basic, free):**
+```
+gradio>=5.0.0
+huggingface_hub>=0.26.0
+```
 
-## Gradio Templates
+**For ZeroGPU full models (zero-a10g, free with quota):**
+```
+gradio>=5.0.0
+torch
+transformers
+accelerate
+spaces
+```
 
-### Basic Chat Interface
+**For ZeroGPU LoRA adapters (zero-a10g, free with quota):**
+```
+gradio>=5.0.0
+torch
+transformers
+accelerate
+spaces
+peft
+```
+
+## CLI Commands (CORRECT Syntax)
+
+```bash
+# Create Space
+hf repo create my-space-name --repo-type space --space-sdk gradio
+
+# Upload files
+hf upload username/space-name ./local-folder --repo-type space
+
+# Download model files to inspect
+hf download username/model-name --local-dir ./model-check --dry-run
+
+# Check what files exist in a model
+hf download username/model-name --local-dir /tmp/check --dry-run 2>&1 | grep -E '\.(safetensors|bin|json)'
+```
+
+## Template 1: Inference API (For Supported Models)
+
+**Use when:** Model has inference widget, is from major provider, or explicitly supports serverless API.
 
 ```python
 import gradio as gr
 from huggingface_hub import InferenceClient
 
-client = InferenceClient("HuggingFaceH4/zephyr-7b-beta")
+MODEL_ID = "HuggingFaceH4/zephyr-7b-beta"  # Must support Inference API!
+client = InferenceClient(MODEL_ID)
 
 def respond(message, history, system_message, max_tokens, temperature, top_p):
     messages = [{"role": "system", "content": system_message}]
@@ -122,351 +187,412 @@ def respond(message, history, system_message, max_tokens, temperature, top_p):
 
 demo = gr.ChatInterface(
     respond,
+    title="Chat Assistant",
+    description="Powered by Hugging Face Inference API",
     additional_inputs=[
         gr.Textbox(value="You are a helpful assistant.", label="System message"),
         gr.Slider(minimum=1, maximum=2048, value=512, step=1, label="Max tokens"),
         gr.Slider(minimum=0.1, maximum=2.0, value=0.7, step=0.1, label="Temperature"),
         gr.Slider(minimum=0.1, maximum=1.0, value=0.95, step=0.05, label="Top-p"),
     ],
-)
-
-if __name__ == "__main__":
-    demo.launch()
-```
-
-### Image Classification
-
-```python
-import gradio as gr
-from transformers import pipeline
-
-classifier = pipeline("image-classification", model="google/vit-base-patch16-224")
-
-def classify(image):
-    results = classifier(image)
-    return {r["label"]: r["score"] for r in results}
-
-demo = gr.Interface(
-    fn=classify,
-    inputs=gr.Image(type="pil"),
-    outputs=gr.Label(num_top_classes=5),
-    title="Image Classifier",
-    description="Upload an image to classify it using ViT",
-    examples=["example1.jpg", "example2.jpg"],
-)
-
-if __name__ == "__main__":
-    demo.launch()
-```
-
-### Text-to-Image Generation
-
-```python
-import gradio as gr
-from huggingface_hub import InferenceClient
-
-client = InferenceClient()
-
-def generate(prompt, negative_prompt, width, height, guidance_scale, num_steps):
-    image = client.text_to_image(
-        prompt,
-        negative_prompt=negative_prompt,
-        model="stabilityai/stable-diffusion-xl-base-1.0",
-        width=width,
-        height=height,
-        guidance_scale=guidance_scale,
-        num_inference_steps=num_steps,
-    )
-    return image
-
-demo = gr.Interface(
-    fn=generate,
-    inputs=[
-        gr.Textbox(label="Prompt", placeholder="A photo of a cat..."),
-        gr.Textbox(label="Negative Prompt", placeholder="blurry, low quality"),
-        gr.Slider(512, 1024, value=1024, step=64, label="Width"),
-        gr.Slider(512, 1024, value=1024, step=64, label="Height"),
-        gr.Slider(1, 20, value=7.5, step=0.5, label="Guidance Scale"),
-        gr.Slider(10, 50, value=30, step=1, label="Steps"),
+    examples=[
+        ["Hello! How are you?"],
+        ["Write a Python function to sort a list"],
     ],
-    outputs=gr.Image(label="Generated Image"),
-    title="SDXL Image Generator",
 )
 
 if __name__ == "__main__":
     demo.launch()
 ```
 
-### Model Comparison
+**requirements.txt:**
+```
+gradio>=5.0.0
+huggingface_hub>=0.26.0
+```
+
+**README.md:**
+```yaml
+---
+title: My Chat App
+emoji: 💬
+colorFrom: blue
+colorTo: purple
+sdk: gradio
+sdk_version: 5.9.1
+app_file: app.py
+pinned: false
+license: apache-2.0
+---
+```
+
+## Template 2: ZeroGPU Full Model (For Models Without Inference API)
+
+**Use when:** Full model (has model.safetensors) but no Inference API support.
 
 ```python
 import gradio as gr
-from huggingface_hub import InferenceClient
+import spaces
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-models = {
-    "Zephyr 7B": "HuggingFaceH4/zephyr-7b-beta",
-    "Mistral 7B": "mistralai/Mistral-7B-Instruct-v0.2",
-    "Llama 3 8B": "meta-llama/Meta-Llama-3-8B-Instruct",
-}
+MODEL_ID = "username/my-full-model"
 
-def generate(prompt, model_name, max_tokens, temperature):
-    client = InferenceClient(models[model_name])
-    response = client.text_generation(
-        prompt,
-        max_new_tokens=max_tokens,
-        temperature=temperature,
+# Load tokenizer at startup
+tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+
+# Global model - loaded lazily on first GPU call for faster Space startup
+model = None
+
+def load_model():
+    global model
+    if model is None:
+        model = AutoModelForCausalLM.from_pretrained(
+            MODEL_ID,
+            torch_dtype=torch.float16,
+            device_map="auto",
+        )
+    return model
+
+@spaces.GPU(duration=120)
+def generate_response(message, history, system_message, max_tokens, temperature, top_p):
+    model = load_model()
+
+    messages = [{"role": "system", "content": system_message}]
+
+    for user_msg, assistant_msg in history:
+        if user_msg:
+            messages.append({"role": "user", "content": user_msg})
+        if assistant_msg:
+            messages.append({"role": "assistant", "content": assistant_msg})
+
+    messages.append({"role": "user", "content": message})
+
+    text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True
+    )
+    inputs = tokenizer([text], return_tensors="pt").to(model.device)
+
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=int(max_tokens),
+            temperature=float(temperature),
+            top_p=float(top_p),
+            do_sample=True,
+            pad_token_id=tokenizer.eos_token_id,
+        )
+
+    response = tokenizer.decode(
+        outputs[0][inputs['input_ids'].shape[1]:],
+        skip_special_tokens=True
     )
     return response
 
-with gr.Blocks() as demo:
-    gr.Markdown("# Model Comparison")
-
-    with gr.Row():
-        prompt = gr.Textbox(label="Prompt", lines=3)
-
-    with gr.Row():
-        with gr.Column():
-            model1 = gr.Dropdown(list(models.keys()), value="Zephyr 7B", label="Model 1")
-            output1 = gr.Textbox(label="Output 1", lines=10)
-        with gr.Column():
-            model2 = gr.Dropdown(list(models.keys()), value="Mistral 7B", label="Model 2")
-            output2 = gr.Textbox(label="Output 2", lines=10)
-
-    with gr.Row():
-        max_tokens = gr.Slider(50, 500, value=200, label="Max Tokens")
-        temperature = gr.Slider(0.1, 1.5, value=0.7, label="Temperature")
-
-    btn = gr.Button("Generate", variant="primary")
-
-    btn.click(generate, [prompt, model1, max_tokens, temperature], output1)
-    btn.click(generate, [prompt, model2, max_tokens, temperature], output2)
+demo = gr.ChatInterface(
+    generate_response,
+    title="My Model",
+    description="Powered by ZeroGPU (free!)",
+    additional_inputs=[
+        gr.Textbox(value="You are a helpful assistant.", label="System message", lines=2),
+        gr.Slider(minimum=64, maximum=2048, value=512, step=64, label="Max tokens"),
+        gr.Slider(minimum=0.1, maximum=1.5, value=0.7, step=0.1, label="Temperature"),
+        gr.Slider(minimum=0.1, maximum=1.0, value=0.95, step=0.05, label="Top-p"),
+    ],
+    examples=[
+        ["Hello! How are you?"],
+        ["Help me write some code"],
+    ],
+)
 
 if __name__ == "__main__":
     demo.launch()
 ```
 
-## Streamlit Template
-
-```python
-import streamlit as st
-from huggingface_hub import InferenceClient
-
-st.set_page_config(page_title="My ML App", page_icon="🤖")
-
-st.title("🤖 My ML App")
-
-@st.cache_resource
-def get_client():
-    return InferenceClient("HuggingFaceH4/zephyr-7b-beta")
-
-client = get_client()
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-if prompt := st.chat_input("What would you like to know?"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-        response = client.chat_completion(
-            messages=st.session_state.messages,
-            max_tokens=500,
-        )
-        reply = response.choices[0].message.content
-        st.markdown(reply)
-
-    st.session_state.messages.append({"role": "assistant", "content": reply})
+**requirements.txt:**
+```
+gradio>=5.0.0
+torch
+transformers
+accelerate
+spaces
 ```
 
-## Docker Template
-
-### Dockerfile
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-RUN pip install --no-cache-dir gradio huggingface_hub transformers torch
-
-COPY app.py .
-
-EXPOSE 7860
-
-CMD ["python", "app.py"]
-```
-
-### Docker README.md
-
+**README.md:**
 ```yaml
 ---
-title: My Docker Space
-emoji: 🐳
+title: My Model
+emoji: 🤖
 colorFrom: blue
-colorTo: cyan
-sdk: docker
-app_port: 7860
+colorTo: purple
+sdk: gradio
+sdk_version: 5.9.1
+app_file: app.py
+pinned: false
+license: apache-2.0
+suggested_hardware: zero-a10g
 ---
 ```
 
-## Command Reference
+## Template 3: ZeroGPU LoRA Adapter (CRITICAL FOR FINE-TUNED MODELS)
 
-### Create a New Space
+**Use when:** Model has `adapter_config.json` and `adapter_model.safetensors` (NOT `model.safetensors`)
 
-```python
-from huggingface_hub import create_repo, upload_file
-
-# Create Space repository
-create_repo(
-    repo_id="username/my-space",
-    repo_type="space",
-    space_sdk="gradio",  # or "streamlit", "docker"
-    private=False,
-)
-
-# Upload files
-upload_file(
-    path_or_fileobj="app.py",
-    path_in_repo="app.py",
-    repo_id="username/my-space",
-    repo_type="space",
-)
-```
-
-### Configure Hardware
+**You MUST identify the base model from `adapter_config.json` field `base_model_name_or_path`**
 
 ```python
-from huggingface_hub import request_space_hardware
+import gradio as gr
+import spaces
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import PeftModel
 
-request_space_hardware(
-    repo_id="username/my-space",
-    hardware="t4-small",  # See hardware options above
+# Your LoRA adapter
+ADAPTER_ID = "username/my-lora-adapter"
+# Base model (from adapter_config.json -> base_model_name_or_path)
+BASE_MODEL_ID = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
+
+# Load tokenizer at startup
+tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_ID)
+
+# Global model - loaded lazily on first GPU call
+model = None
+
+def load_model():
+    global model
+    if model is None:
+        base_model = AutoModelForCausalLM.from_pretrained(
+            BASE_MODEL_ID,
+            torch_dtype=torch.float16,
+            device_map="auto",
+        )
+        model = PeftModel.from_pretrained(base_model, ADAPTER_ID)
+        model = model.merge_and_unload()  # Merge for faster inference
+    return model
+
+@spaces.GPU(duration=120)
+def generate_response(message, history, system_message, max_tokens, temperature, top_p):
+    model = load_model()
+
+    messages = [{"role": "system", "content": system_message}]
+
+    for item in history:
+        if isinstance(item, (list, tuple)) and len(item) == 2:
+            user_msg, assistant_msg = item
+            if user_msg:
+                messages.append({"role": "user", "content": user_msg})
+            if assistant_msg:
+                messages.append({"role": "assistant", "content": assistant_msg})
+
+    messages.append({"role": "user", "content": message})
+
+    text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True
+    )
+    inputs = tokenizer([text], return_tensors="pt").to(model.device)
+
+    with torch.no_grad():
+        outputs = model.generate(
+            **inputs,
+            max_new_tokens=int(max_tokens),
+            temperature=float(temperature),
+            top_p=float(top_p),
+            do_sample=True,
+            pad_token_id=tokenizer.eos_token_id,
+        )
+
+    response = tokenizer.decode(
+        outputs[0][inputs['input_ids'].shape[1]:],
+        skip_special_tokens=True
+    )
+    return response
+
+demo = gr.ChatInterface(
+    generate_response,
+    title="My Fine-Tuned Model",
+    description="LoRA fine-tuned model powered by ZeroGPU (free!)",
+    additional_inputs=[
+        gr.Textbox(value="You are a helpful assistant.", label="System message", lines=2),
+        gr.Slider(minimum=64, maximum=2048, value=512, step=64, label="Max tokens"),
+        gr.Slider(minimum=0.1, maximum=1.5, value=0.7, step=0.1, label="Temperature"),
+        gr.Slider(minimum=0.1, maximum=1.0, value=0.95, step=0.05, label="Top-p"),
+    ],
+    examples=[
+        ["Hello! How are you?"],
+        ["Help me with a coding task"],
+    ],
 )
+
+if __name__ == "__main__":
+    demo.launch()
 ```
 
-### Set Secrets
+**requirements.txt (MUST include peft):**
+```
+gradio>=5.0.0
+torch
+transformers
+accelerate
+spaces
+peft
+```
 
+**README.md:**
+```yaml
+---
+title: My Fine-Tuned Model
+emoji: 🔧
+colorFrom: green
+colorTo: blue
+sdk: gradio
+sdk_version: 5.9.1
+app_file: app.py
+pinned: false
+license: apache-2.0
+suggested_hardware: zero-a10g
+---
+```
+
+## Post-Deployment Steps
+
+**After uploading your Space files:**
+
+### 1. Set the Runtime Hardware (REQUIRED for GPU models)
+
+- Go to: `https://huggingface.co/spaces/USERNAME/SPACE_NAME/settings`
+- Under "Space Hardware", select the appropriate option:
+  - **ZeroGPU** for free on-demand GPU (recommended)
+  - Or a dedicated GPU tier if needed
+
+### 2. Verify the Space is Running
+
+- Check the Space URL for any build errors
+- Review container logs in Settings if issues occur
+
+### 3. Common Post-Deploy Fixes
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| "No API found" error | Hardware mismatch | Set runtime to ZeroGPU in Settings |
+| Model not loading | LoRA vs full model confusion | Check if it's an adapter, use correct template |
+| Inference API errors | Model not on serverless | Load directly with transformers instead |
+
+## Detecting Model Type - Quick Reference
+
+### Full Model
+Files include: `model.safetensors`, `pytorch_model.bin`, or sharded versions
 ```python
-from huggingface_hub import add_space_secret
-
-add_space_secret(
-    repo_id="username/my-space",
-    key="API_KEY",
-    value="your-secret-value",
-)
+# Can load directly
+model = AutoModelForCausalLM.from_pretrained("username/model")
 ```
 
-### Pause/Restart Space
-
+### LoRA/PEFT Adapter
+Files include: `adapter_config.json`, `adapter_model.safetensors`
 ```python
-from huggingface_hub import pause_space, restart_space
-
-# Pause to stop billing
-pause_space("username/my-space")
-
-# Restart when needed
-restart_space("username/my-space")
+# Must load base model first, then apply adapter
+base_model = AutoModelForCausalLM.from_pretrained("base-model-id")
+model = PeftModel.from_pretrained(base_model, "username/adapter")
+model = model.merge_and_unload()  # Optional: merge for faster inference
 ```
 
-### Duplicate a Space
-
+### Inference API Available
+Model page shows "Inference Providers" widget on the right side
 ```python
-from huggingface_hub import duplicate_space
-
-duplicate_space(
-    from_id="original/space",
-    to_id="username/my-copy",
-    private=False,
-)
+# Can use InferenceClient (simplest approach)
+from huggingface_hub import InferenceClient
+client = InferenceClient("username/model")
 ```
 
-## Workflow Examples
+## Fixing Missing pipeline_tag (To Enable Inference API)
 
-### Workflow 1: Quick Gradio Demo
-
-1. Create `app.py` with Gradio interface
-2. Create `README.md` with Space metadata
-3. Create `requirements.txt` with dependencies
-4. Push to Hugging Face:
+If a model doesn't have an inference widget but should, it may be missing metadata:
 
 ```bash
-huggingface-cli repo create my-demo --type space --sdk gradio
-cd my-demo
-# Add your files
-git add .
-git commit -m "Initial Space"
-git push
+# Download the README
+hf download username/model-name README.md --local-dir /tmp/fix
+
+# Edit to add pipeline_tag in YAML frontmatter:
+# ---
+# pipeline_tag: text-generation
+# tags:
+# - conversational
+# ---
+
+# Upload the fix
+hf upload username/model-name /tmp/fix/README.md README.md
 ```
 
-### Workflow 2: Deploy Existing Model
+**Note:** Even with correct tags, custom models may not get Inference API - it depends on HF's infrastructure decisions.
 
-1. Identify the model on Hugging Face Hub
-2. Create Space with appropriate hardware
-3. Use `InferenceClient` or load model directly
-4. Build UI around model capabilities
+## CRITICAL: Gradio 5.x Requirements
 
-### Workflow 3: Private Space with Secrets
-
-1. Create private Space
-2. Add API keys as secrets
-3. Access secrets via environment variables:
-
+### Examples Format (MUST be nested lists)
 ```python
-import os
-api_key = os.environ.get("API_KEY")
+# CORRECT:
+examples=[
+    ["Example 1"],
+    ["Example 2"],
+]
+
+# WRONG (causes ValueError):
+examples=[
+    "Example 1",
+    "Example 2",
+]
 ```
 
-## Best Practices
+### Version Requirements
+```
+gradio>=5.0.0
+huggingface_hub>=0.26.0
+```
 
-### Performance
-- Use `@gr.cache` or `@st.cache_resource` for model loading
-- Choose appropriate hardware for model size
-- Use `InferenceClient` for serverless inference when possible
-- Implement streaming for long-running generations
-
-### User Experience
-- Add clear titles and descriptions
-- Include example inputs
-- Show loading indicators for slow operations
-- Handle errors gracefully with user-friendly messages
-
-### Security
-- Never hardcode API keys—use Space secrets
-- Validate user inputs
-- Set appropriate rate limits
-- Use private Spaces for sensitive demos
-
-### Cost Management
-- Start with CPU, upgrade only if needed
-- Use `pause_space()` when not in use
-- Consider ZeroGPU for intermittent GPU needs
-- Monitor usage in Space settings
+Do NOT use `gradio==4.44.0` - causes `ImportError: cannot import name 'HfFolder'`
 
 ## Troubleshooting
 
-### Space Won't Build
-- Check `requirements.txt` for typos
-- Ensure compatible package versions
-- Check build logs in Space settings
+### "No API found" Error
+**Cause:** Gradio app isn't exposing API correctly, often due to hardware mismatch
+**Fix:** Go to Space Settings and set runtime to "ZeroGPU" or appropriate GPU tier
 
-### Out of Memory
-- Reduce model precision (use fp16 or int8)
-- Use smaller batch sizes
-- Upgrade to larger hardware tier
-- Use `InferenceClient` instead of loading locally
+### "OSError: does not appear to have a file named pytorch_model.bin, model.safetensors"
+**Cause:** Trying to load a LoRA adapter as a full model
+**Fix:** Check for `adapter_config.json` - if present, use PEFT to load:
+```python
+from peft import PeftModel
+base_model = AutoModelForCausalLM.from_pretrained("base-model")
+model = PeftModel.from_pretrained(base_model, "adapter-id")
+```
 
-### Slow Startup
-- Use `@spaces.GPU` decorator for ZeroGPU
-- Lazy-load models on first request
-- Pre-download models in Dockerfile
+### Inference API Not Available
+**Cause:** Model doesn't have pipeline_tag or isn't deployed to serverless
+**Fix:** Either:
+  a. Add `pipeline_tag: text-generation` to model's README.md
+  b. Or load model directly with transformers instead of InferenceClient
 
-### CORS/Embedding Issues
-- Set `disable_embedding: false` in README
-- Check for conflicting `app_port` settings
+### `ImportError: cannot import name 'HfFolder'`
+**Cause:** gradio/huggingface_hub version mismatch
+**Fix:** Use `gradio>=5.0.0` and `huggingface_hub>=0.26.0`
+
+### `ValueError: examples must be nested list`
+**Cause:** Gradio 5.x format change
+**Fix:** Use `[["ex1"], ["ex2"]]` not `["ex1", "ex2"]`
+
+### Space builds but model doesn't load
+**Cause:** Missing `peft` for adapters, or wrong base model
+**Fix:** Check adapter_config.json for correct base_model_name_or_path
+
+## Workflow Summary
+
+1. **Analyze model** (check for adapter_config.json, model files, inference widget)
+2. **Determine strategy** (Inference API vs ZeroGPU, full model vs LoRA)
+3. **Ask user if unclear** about model type or cost preferences
+4. **Generate correct template** based on analysis
+5. **Create Space** with correct requirements and README
+6. **Upload files** using `hf upload`
+7. **Set hardware** in Space Settings (ZeroGPU for free GPU access)
+8. **Monitor build logs** for any issues
