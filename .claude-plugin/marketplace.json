@@ -40,6 +40,15 @@
         "./skills/reviewer-2-simulator",
         "./skills/research-taste-developer"
       ]
+    },
+    {
+      "name": "deployment-skills",
+      "description": "Skills for deploying ML models and applications to cloud platforms",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/hugging-face-space-deployer"
+      ]
     }
   ]
 }
