@@ -49,15 +49,6 @@
       "skills": [
         "./skills/hugging-face-space-deployer"
       ]
-    },
-    {
-      "name": "documentation-skills",
-      "description": "Skills for generating architectural documentation and wikis with source code traceability",
-      "source": "./",
-      "strict": false,
-      "skills": [
-        "./skills/ted-mosby"
-      ]
     }
   ]
 }

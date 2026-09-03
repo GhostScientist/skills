@@ -1,6 +1,10 @@
 ---
 name: research-taste-developer
 description: Develops intuition for what makes research "good" versus "incremental." Use when asked about research taste, how to identify good research, what makes a paper impactful, how to develop research intuition, or how to pick important problems. Analyzes patterns in highly-cited work and what top researchers do differently.
+license: Apache-2.0
+metadata:
+  author: GhostScientist
+  version: "1.0"
 ---
 
 # Research Taste Developer

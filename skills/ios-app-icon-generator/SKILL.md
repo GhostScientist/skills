@@ -1,6 +1,10 @@
 ---
 name: ios-app-icon-generator
 description: Generates a complete iOS app icon set with all required sizes. Use when asked to create an app icon, design an iOS icon, generate app store artwork, or make an icon for an iPhone/iPad app. Follows a philosophy-first approach - first defining the visual identity and concept, then producing production-ready icons.
+license: Apache-2.0
+metadata:
+  author: GhostScientist
+  version: "1.0"
 ---
 
 # iOS App Icon Generator

@@ -1,6 +1,10 @@
 ---
 name: experiment-design-checklist
 description: Generates a rigorous experiment design given a hypothesis. Use when asked to design experiments, plan experiments, create an experimental setup, or figure out how to test a research hypothesis. Covers controls, baselines, ablations, metrics, statistical tests, and compute estimates.
+license: Apache-2.0
+metadata:
+  author: GhostScientist
+  version: "1.0"
 ---
 
 # Experiment Design Checklist

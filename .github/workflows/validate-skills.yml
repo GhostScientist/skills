@@ -1,0 +1,35 @@
+name: Validate Skills
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install --quiet pyyaml
+
+      - name: Validate against the Agent Skills spec
+        run: python3 scripts/validate_skills.py
+
+      - name: Cross-check with the reference validator
+        continue-on-error: true
+        run: |
+          pip install --quiet skills-ref || {
+            echo "skills-ref unavailable; the repo validator above is authoritative."
+            exit 0
+          }
+          for skill in skills/*/; do
+            echo "== $skill"
+            skills-ref validate "$skill" || exit 1
+          done
