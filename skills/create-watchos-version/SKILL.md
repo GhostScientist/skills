@@ -1,10 +1,11 @@
 ---
-
 name: create-watchos-version
 description: Analyzes existing iOS/macOS/Apple platform projects to create a comprehensive, phased plan for building a watchOS companion or standalone app. Use when users want to add watchOS support to an existing Apple platform app, create a Watch app version of their iOS app, or build watchOS features. The skill digests project architecture, identifies patterns, analyzes API compatibility, searches for current watchOS documentation, and produces a detailed implementation plan with API availability warnings before any code generation.
-
+license: Apache-2.0
+metadata:
+  author: GhostScientist
+  version: "1.1"
 ---
-
 
 # Create watchOS Version
 
@@ -21,7 +22,15 @@ Analyzes existing Apple platform projects and creates detailed, phased implement
 
 ## Phase 1: Project Discovery
 
-Scan project root for:
+Run the bundled analyzer first — it reports architecture, dependencies, existing targets, and
+watchOS-incompatible frameworks as JSON:
+
+```bash
+python3 scripts/analyze_project.py <project_path>
+```
+
+Use its `watchos_incompatible` list to seed Phase 3. If the script fails or the project layout
+is unusual, fall back to scanning manually for:
 
 ```
 ├── App Architecture (SwiftUI, UIKit, AppKit, hybrid)
@@ -67,11 +76,18 @@ See `references/api-compatibility.md` for detailed compatibility matrix.
 
 ### Version Targeting
 
+Each iOS release has a paired watchOS release. Derive the target from the project's existing
+minimum iOS version rather than assuming the latest:
+
 ```
 iOS 16+ → watchOS 9+  (WidgetKit complications)
 iOS 17+ → watchOS 10+ (SwiftData, Smart Stack)
 iOS 18+ → watchOS 11+ (Live Activities on Watch)
 ```
+
+This mapping is a starting point, not an authority — newer OS versions ship every year. Confirm
+the current pairing and any newer capabilities on developer.apple.com before committing to a
+deployment target.
 
 ### Structure
 

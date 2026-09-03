@@ -1,6 +1,10 @@
 ---
 name: implement-paper-from-scratch
 description: Guides you through implementing a research paper step-by-step from scratch. Use when asked to implement a paper, code up a paper, reproduce research results, or build a model from a paper. Focuses on building understanding through implementation with checkpoint questions.
+license: Apache-2.0
+metadata:
+  author: GhostScientist
+  version: "1.0"
 ---
 
 # Implement Paper From Scratch

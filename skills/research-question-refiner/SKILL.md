@@ -1,6 +1,10 @@
 ---
 name: research-question-refiner
 description: Helps transform a vague research interest into a concrete, tractable research question. Use when asked to refine a research idea, develop a research question, scope a research project, or figure out what to work on. Walks through systematic refinement with feasibility analysis.
+license: Apache-2.0
+metadata:
+  author: GhostScientist
+  version: "1.0"
 ---
 
 # Research Question Refiner

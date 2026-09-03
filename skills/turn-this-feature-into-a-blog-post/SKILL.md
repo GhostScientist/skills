@@ -1,6 +1,10 @@
 ---
 name: turn-this-feature-into-a-blog-post
 description: Generates a technical blog post from code implementation. Use when asked to write a blog post about a feature, explain an implementation for a blog, document code as a blog article, or create technical content from source code. Triggers on phrases like "write a blog post about", "turn this into a blog", "create a technical article", or "explain this for a blog".
+license: Apache-2.0
+metadata:
+  author: GhostScientist
+  version: "1.0"
 ---
 
 # Turn This Feature Into a Blog Post

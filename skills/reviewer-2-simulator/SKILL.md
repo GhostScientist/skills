@@ -1,6 +1,10 @@
 ---
 name: reviewer-2-simulator
 description: Critiques your paper draft as a skeptical reviewer would. Use when asked to review a paper draft, find weaknesses in a paper, prepare for peer review, anticipate reviewer criticism, or stress-test research before submission. Identifies weak claims, missing baselines, unclear explanations, and overclaims.
+license: Apache-2.0
+metadata:
+  author: GhostScientist
+  version: "1.0"
 ---
 
 # Reviewer 2 Simulator
